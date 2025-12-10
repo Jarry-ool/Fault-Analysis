@@ -82,7 +82,7 @@ def diagnose():
     (cfg.CHECKPOINT_DIR/ "diagnosis" ).mkdir(exist_ok=True, parents=True)
 
     # 1) 加载模型（优先 best）
-    model_path = cfg.CHECKPOINT_DIR / "model" / "best_model.pth"
+    model_path = cfg.CHECKPOINT_DIR / "model" / "epoch_40.pth"
     if not model_path.exists():
         model_path = cfg.CHECKPOINT_DIR / "model"/ "final_model.pth"
     print(f"加载模型: {model_path}")
@@ -140,7 +140,7 @@ def diagnose():
         pred_fault = (score < thr).astype(int)
         detected = int(pred_fault.sum())
         total = len(score)
-        print(f"\r\n[{name}] 样本={total} | 判为异常={detected} ({detected/total*100:.2f}%)")
+        print(f"[{name}] 样本={total} | 判为异常={detected} ({detected/total*100:.2f}%)\r\n")
         results.append((name, score, pred_fault))
 
         # 直方图
@@ -158,7 +158,7 @@ def diagnose():
     else:
         eval_split("test_all", test_loader_all)
 
-    print("结果图片已保存到 outputs/ 目录。")
+    print("结果图片已保存到 outputs/diagnosis 目录。")
 
 if __name__ == "__main__":
     diagnose()
