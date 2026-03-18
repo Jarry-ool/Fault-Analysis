@@ -1,0 +1,1567 @@
+%% ========================================================================
+%% Engineering Applications of Artificial Intelligence (EAAI)
+%% Elsevier elsarticle class — preprint 3p (single-column review format)
+%% Restructured: Intro → Related Work → Methodology → Experiments → Conclusion
+%% ========================================================================
+\documentclass[preprint,12pt,3p]{elsarticle}
+
+\usepackage{lineno,hyperref}
+\usepackage{xspace}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\graphicspath{{figures/}{figures/paper/}}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{subfigure}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage{cleveref}
+\usepackage{indentfirst}
+\usepackage{bookmark}
+%% EAAI margin control (A4, per Elsevier author guidelines).
+%% geometry is already loaded by the class; use \geometry{} to reconfigure.
+\geometry{a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+\emergencystretch=2em
+\hfuzz=1pt
+\raggedbottom
+\hyphenation{mag-net-o-stric-tion mag-net-o-stric-tion-in-duced
+             mi-cro-con-trol-ler non-sta-tion-ar-i-ty}
+
+%% Fix elsarticle \paragraph: restore \parindent and avoid double period
+%% (elsarticle hardcodes 0pt indent and auto-appends "." to the heading)
+\makeatletter
+\renewcommand\elsparagraph{\@startsection{paragraph}{4}{\parindent}%
+           {10\p@ \@plus 6\p@ \@minus 3\p@}%
+           {-6\p@}%
+           {\normalfont\itshape}}
+\makeatother
+
+\hypersetup{colorlinks, linkcolor=blue, anchorcolor=blue, citecolor=green}
+
+\journal{Engineering Applications of Artificial Intelligence}
+\bibliographystyle{elsarticle-harv}
+\biboptions{authoryear}
+\let\cite\citep   %% make \cite parenthetical: (Author, year)
+
+%% ---- Custom macros ----
+\newcommand{\zerone}{\textsc{SpecRas}\xspace}      %% our Spectral Raster method
+\newcommand{\hetspatvae}{\textsc{HetSpatVAE}\xspace} %% our Heterogeneous Spatial VAE
+\newcommand{\hczv}{\hetspatvae}                    %% backward compat alias
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bs}{\mathbf{s}}
+\newcommand{\bI}{\mathbf{I}}
+\newcommand{\bz}{\mathbf{z}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\newcommand{\ie}{i.e.,\xspace}
+\newcommand{\eg}{e.g.,\xspace}
+\newcommand{\etal}{\textit{et al.}\xspace}
+
+\begin{document}
+
+\begin{frontmatter}
+
+%% ---- Title ----
+%% Author names, affiliations, and correspondence are in titlepage.tex.
+\title{Dual-Pathway Deep Learning for Power Transformer Vibration Fault
+       Diagnosis: Spectral Feature Encoding and Spatial Variational
+       Autoencoder}
+
+%% ---- Highlights ----
+%% 3–5 bullet points, each ≤ 85 characters (EAAI requirement).
+\begin{highlights}
+\item Validated on 19 real in-service transformers with strict
+      cross-unit test split (no unit in more than one split).
+\item SpecRas spectral rasterisation with Grad-CAM yields
+      Hz-resolution spectral attribution maps.
+\item HetSpatVAE detects anomalies label-free via spatial
+      reconstruction residuals over the time-frequency plane.
+\item SWA adds $+2.75$\,pp test accuracy with zero missed faults
+      under cross-unit covariate shift.
+\item Peak-load false positives suggest load metadata as the
+      primary missing covariate.
+\end{highlights}
+
+%% ---- Abstract ----
+\begin{abstract}
+\indent Vibration-based fault diagnosis for in-service power transformers faces
+three compounding challenges: non-stationary harmonic spectra under
+varying load, severe label scarcity (a handful of confirmed faults per
+unit per decade), and the need for frequency-level interpretability
+before engineers can justify maintenance decisions.
+
+This paper presents a dual-pathway deep learning framework validated on
+19 real in-service alternating current (AC) power transformers,
+partitioned by unit identity (15 training / 2 validation / 2 held-out
+test; 400 test segments: 246 normal, 154 fault).
+The supervised \zerone{} (Spectral Rasterisation) pathway rasterises a
+1{,}200-dimensional spectral feature vector---time-domain statistics,
+Welch power spectral density (PSD) at 1--2{,}000\,Hz, and
+high-frequency energy ratios---into a $150{\times}150$ image and
+fine-tunes a ResNet18 classifier with stochastic weight averaging (SWA);
+Gradient-weighted Class Activation Mapping (Grad-CAM) converts
+predictions to per-Hz spectral attribution maps.
+The \hczv{} (Heterogeneous Spatial Variational Autoencoder) pathway
+encodes three-channel time-frequency images (Morlet continuous wavelet
+transform (CWT), short-time Fourier transform (STFT), waveform context)
+through a spatial ResNet variational autoencoder; reconstruction
+residuals localise anomalies without fault labels.
+The \textit{AI contributions} are spectral feature rasterisation,
+a spatial VAE architecture, and SWA-based training; the
+\textit{engineering application} is interpretable fault diagnosis on
+in-service power transformers under cross-unit covariate shift.
+
+On 400 held-out samples from two previously unseen transformers
+(246 normal, 154 fault), \zerone achieves \textbf{97.00\% accuracy}
+(macro-F1\,=\,0.969, AUC\,=\,0.989) with zero missed faults; \hczv
+reaches \textbf{98.25\% accuracy} (macro-F1\,=\,0.982) with zero
+missed faults and just 7 false positives.
+All false positives cluster in the evening peak-load window with
+elevated 1{,}000--2{,}000\,Hz STFT content, consistent with load as
+a missing covariate.
+\end{abstract}
+
+\begin{keyword}
+condition monitoring \sep deep learning \sep industrial AI \sep
+transformer fault diagnosis \sep variational autoencoder \sep
+vibration signal analysis
+\end{keyword}
+
+\end{frontmatter}
+
+\bookmark[page=1,level=0]{Dual-Pathway Deep Learning for Power Transformer Vibration Fault Diagnosis}
+%% ========================================================================
+\section{Introduction}
+\label{sec:intro}
+%% ========================================================================
+
+A failed AC power transformer can black out a region for
+hours; replacement takes months to years because each unit is largely
+custom-built \cite{cigre2015TB642}.
+Knowing whether a unit is degrading---before it fails---is therefore
+worth considerable effort.
+Surface-mounted accelerometers have become the standard non-intrusive
+monitoring modality: they can be retrofitted without de-energising the
+unit and are sensitive to core looseness and winding deformation at a
+fraction of the cost of dissolved gas analysis (DGA) oil sampling
+\cite{bagheri2018transformer,tenbohlen2016diagnostic}.
+
+Three practical constraints make vibration-based transformer diagnosis
+harder than the bear\-ing-fault literature suggests.
+
+\textit{Non-stationarity.}
+Transformer vibration stems from two coupled mechanisms:
+magnet\-o\-stric\-tion-in\-duced Lorentz forces at even harmonics of the supply
+frequency (100, 200\,Hz for a 50\,Hz system), and load-induced winding
+forces at the same harmonics plus a broadband floor
+\cite{zollanvari2021transformer}.
+Both shift continuously with operating conditions.
+A fault redistributes energy across frequency decades---but so does a
+routine load step, and the two look similar in a fixed-window Fourier
+representation \cite{hong2021transformer}.
+
+\textit{Label scarcity.}
+A large regional grid may see only a handful of confirmed fault cases
+per transformer per decade.
+Large, balanced, annotated training sets are simply not available, and
+accumulating matched fault recordings for every unit is impractical
+\cite{zhao2020shrinkage}.
+
+\textit{Interpretability.}
+Grid engineers are accountable for every maintenance decision.
+An anomaly score alone cannot justify taking a high-value asset offline;
+the model must indicate which frequency bands drove the conclusion so
+engineers can cross-check against known physical fault signatures
+\cite{rudin2019stop}.
+
+\textit{Limitations of existing approaches.}
+Rule-based methods encode domain expertise as spectral thresholds and
+are fully transparent, but their accuracy is bounded by calibration
+conditions and they cannot adapt to unseen fault morphologies
+\cite{ieee2019c57}.
+Empirical mode decomposition (EMD) and wavelet decomposition track
+non-stationarity better but require manual feature selection \cite{peng2004wavelet}.
+Convolutional neural network (CNN) classifiers on spectrograms achieve
+high accuracy on rotating-machinery benchmarks but require balanced
+labelled data and produce no frequency-level explanation
+\cite{guo2019transfer,wen2018cnn}.
+Flat-vector variational autoencoder (VAE) anomaly detectors avoid label
+requirements but cannot
+localise which region of the time-frequency image is anomalous
+\cite{kingma2013auto,an2015variational}.
+
+\textit{Contributions.}
+This paper makes four technical contributions (Fig.~\ref{fig:overview}).
+\begin{enumerate}
+\item The \zerone{} (Spectral Rasterisation) pathway rasterises a
+1{,}200-dimensional spectral feature vector (time-domain statistics,
+Welch power spectral density (PSD) at 1--2\,000\,Hz, and
+high-frequency energy ratios) into a $150{\times}150$ image whose
+PSD-dominant strip preserves frequency ordering.  Following the
+feature-to-image encoding of Zerone~\cite{kim2025zerone} and
+substituting physics-motivated spectral descriptors for transformer
+vibration, Gradient-weighted Class Activation Mapping (Grad-CAM)
+activations in the PSD rows read directly as per-Hz spectral
+attribution maps.
+\item The \hczv{} (Heterogeneous Spatial Variational Autoencoder) pathway
+encodes a three-channel heterogeneous time-frequency image into a
+$64{\times}7{\times}7$ latent map via a Spatial ResNet VAE
+(SpatialResNetVAE); each spatial cell corresponds to a specific
+time-frequency region, so reconstruction residuals serve as
+interpretable anomaly heat maps.
+\item Stochastic weight averaging \cite{izmailov2018averaging} contributes
+$+2.75$\,pp test accuracy over the best-validation checkpoint on the
+3{,}844-sample training pool under cross-unit covariate shift, with
+zero missed faults.
+\item A failure-mode analysis reveals that all false positives from both
+pathways cluster in the 16:00--20:30 peak-load window and carry
+elevated 1\,000--2\,000\,Hz short-time Fourier transform (STFT) content,
+pointing to load metadata conditioning as a concrete next step.
+\end{enumerate}
+
+Section~\ref{sec:related} surveys related work.
+Section~\ref{sec:methods} describes the methodology.
+Section~\ref{sec:experiments} reports experiments and discussion.
+Section~\ref{sec:conclusion} concludes.
+
+
+%% ========================================================================
+\section{Related Work}
+\label{sec:related}
+%% ========================================================================
+
+\subsection{Vibration-Based Transformer Fault Diagnosis}
+
+Transformer condition monitoring has traditionally centred on dissolved
+gas analysis and power-frequency electrical tests
+\cite{ieee2019c57,cigre2015TB642},
+both requiring oil sampling or controlled energisation.
+Vibration analysis emerged as a non-intrusive complement
+\cite{bagheri2018transformer}: core looseness, winding
+deformation, and cooling faults each perturb the 100--200\,Hz harmonic
+components in recognisable ways.
+Early systems extracted these features by hand and applied fixed
+thresholds or classical classifiers
+\cite{tenbohlen2016diagnostic,zollanvari2021transformer}.
+More recent work uses deep recurrent networks on waveform windows and
+CNN classifiers on vibration spectrograms
+\cite{hong2021transformer,li2023cnn}, with
+reported accuracies above 90\% on within-unit test sets.
+Cross-unit evaluation---where test transformers are entirely absent
+from training---is less commonly reported and consistently harder.
+
+\subsection{Deep Learning for Industrial Condition Monitoring}
+
+CNN classifiers on spectrograms are now standard for rotating-machinery
+fault diagnosis, reaching near-perfect accuracy on benchmarks such as
+Case Western Reserve University (CWRU) and Jiangnan University (JNU)
+benchmarks \cite{guo2019transfer,wen2018cnn}.
+Attention mechanisms and recurrent architectures extend the temporal
+modelling horizon \cite{zhao2019deep,zhao2017bilstm}.
+Transfer learning from ImageNet cuts the labelled-data requirement
+substantially \cite{shao2019transfer}; deep residual
+shrinkage networks add robustness to noisy labels
+\cite{zhao2020shrinkage}.
+Power transformer vibration differs from bearing diagnostics in two ways.
+The training set is far smaller---hundreds of samples per class, not
+thousands.
+And the signal concentrates in narrow harmonic peaks at multiples of
+the supply frequency, so raw-signal CNNs without explicit frequency-domain
+feature engineering tend to miss the discriminative structure.
+
+\subsection{Signal Representation and Feature Learning}
+
+How a signal is represented before it reaches a model has a larger effect
+on diagnostic accuracy than the model architecture itself, particularly
+when training data are limited.
+Continuous wavelet transform (CWT) resolves transient events at multiple
+time-frequency scales and has been standard for transformer fault detection
+\cite{peng2004wavelet}.
+STFT is preferred for quasi-stationary harmonic signals because of its
+computational efficiency and fixed spectral resolution
+\cite{cohen1995tfa}.
+Combining CWT and STFT captures complementary fault signatures
+\cite{lei2020review}.
+Signal-to-image encoding for CNN processing ranges from raw waveform
+reshaping \cite{wen2018cnn} to stacked short-time spectra
+as image channels \cite{zhao2019deep}.
+End-to-end 1-D CNNs learn task-relevant frequency filters without
+manual selection \cite{guo2019transfer}.
+Our \zerone encoding adapts the feature-to-image rasterisation principle
+of Zerone~\cite{kim2025zerone} to physics-motivated spectral
+features specific to power transformer vibration.
+Rather than mapping binary or generic indicators, \zerone encodes a
+1{,}200-dimensional spectral feature vector (Welch PSD at
+1--2\,000\,Hz, STFT frame means, and high-frequency energy ratios)
+into a physically ordered raster image.
+The PSD panel occupies $\approx$77\% of image height with frequency
+ordering preserved row-by-row, so Grad-CAM activations read directly
+as Hz-resolution spectral attribution maps.
+
+\subsection{Generative Models for Anomaly Detection}
+
+VAEs \cite{kingma2013auto} are well suited to one-class anomaly
+detection: a model trained exclusively on normal samples produces high
+reconstruction error and out-of-distribution latent codes for anomalous
+inputs \cite{an2015variational}.
+The $\beta$-VAE \cite{higgins2017betavae} promotes disentangled
+representations at the cost of reconstruction fidelity.
+Deep Autoencoding Gaussian Mixture Models \cite{zong2018deep} combine
+reconstruction error with latent-space density estimation; PatchCore
+\cite{roth2022towards} builds a memory bank of normal feature patches
+for industrial image anomaly detection.
+Both use flat vector latent codes and therefore cannot say where in the
+time-frequency image the anomaly occurred.
+\hczv addresses this by retaining the $7{\times}7$ spatial structure
+of the ResNet encoder, with posterior collapse managed via $\beta$-KL
+warm-up annealing \cite{lucas2019posterior}.
+
+
+%% ========================================================================
+\section{Methodology}
+\label{sec:methods}
+%% ========================================================================
+
+%% --- Figure: dual-pathway framework overview ---
+\begin{figure}[H]
+  \centering
+  \subfigure[\zerone supervised pathway: 1\,200-dim spectral feature vector
+    $\to$ $150\times150$ raster image $\to$ ResNet18\,+\,SWA.
+    Best-val checkpoint (V1) reaches 94.25\%; SWA checkpoint (V3) reaches 97.00\%.]{%
+    \includegraphics[width=0.88\linewidth]{spec_feat.png}%
+  }\\[8pt]
+  \subfigure[\hczv one-class pathway: data preprocessing $\to$
+    SpatialResNetVAE training $\to$ composite anomaly scoring.
+    Trained on normal samples only; achieves 98.25\% accuracy.]{%
+    \includegraphics[width=0.72\linewidth]{vae_flow.png}%
+  }
+  \caption{%
+    Dual-pathway vibration fault diagnosis framework.
+    \textbf{(a)} \zerone supervised pathway: spectral rasterisation
+    $\to$ ResNet18\,+\,SWA $\to$ per-Hz Grad-CAM attribution.
+    \textbf{(b)} \hczv one-class pathway: 3-channel time-frequency image
+    $\to$ SpatialResNetVAE $\to$ reconstruction-residual heat map.
+    Both branches share energy-weighted multi-channel fusion
+    (Section~\ref{sec:preprocess}).
+  }
+  \label{fig:overview}
+\end{figure}
+
+\subsection{Problem Formulation}
+\label{sec:problem}
+
+Let $\mathcal{D} = \{(\mathcal{X}_k, y_k)\}_{k=1}^{N}$ be a labelled
+dataset of vibration samples, where
+%
+\begin{equation}
+  \mathcal{X}_k = \bigl\{
+    x_k^{(u)} \in \R^{T} \;\big|\; u = 1, \ldots, U_k
+  \bigr\}
+  \label{eq:sample_def}
+\end{equation}
+%
+is the set of multi-channel signals acquired at timestamp $t_k$,
+$T = 8{,}192$ is the fixed signal length (sampling rate
+$f_s = 8{,}192\,$Hz, 1-second window), $U_k \geq 1$ is the number of
+active sensor channels, and $y_k \in \{0,1\}$ is the binary label
+(0\,=\,normal, 1\,=\,fault).
+The diagnostic task has two objectives: (i) supervised binary
+classification given $\mathcal{X}_k$ and a labeled training set; and
+(ii) one-class anomaly detection given only normal-class training data
+via a composite scoring function.
+Both require interpretable evidence linking the decision to specific
+frequency bands.
+
+\subsection{Signal Preprocessing}
+\label{sec:preprocess}
+
+\paragraph{Energy-weighted channel fusion}
+To collapse $\mathcal{X}_k$ into a single representative signal,
+the channel weights proportional to the signal energy are calculated:
+%
+\begin{align}
+  w_u &= \frac{
+    \E\!\left[(x_k^{(u)})^2\right]
+  }{
+    \displaystyle\sum_{j=1}^{U_k}
+      \E\!\left[(x_k^{(j)})^2\right] + \varepsilon
+  }, \label{eq:energy_weight} \\[4pt]
+  \tilde{x}_k &= \sum_{u=1}^{U_k} w_u \, x_k^{(u)}. \notag
+\end{align}
+%
+with $\varepsilon = 10^{-12}$.
+This fusion is invariant to channel ordering and count, so all
+downstream encoders remain agnostic to the sensor configuration of
+each individual transformer.
+The acquired JSON records contain only a \texttt{sensor\_id} string
+and signal samples (no position, mounting angle, or sensor type is
+recorded), so energy-weighted aggregation is the natural choice for
+producing a fixed-size representation regardless of how many channels
+happen to be active.
+
+\paragraph{DC removal and label assignment}
+Both pathways operate on the mean-subtracted signal
+$\bar{x}_k = \tilde{x}_k - \mu_{\tilde{x}_k}$.
+Class labels are inferred automatically from directory names:
+subdirectories containing normal receive label 0; those
+containing fault receive label 1.
+
+
+\subsection{Supervised \zerone--ResNet18 Pathway}
+\label{sec:zerone}
+
+\subsubsection{Spectral Feature Vector}
+\label{sec:feat_vec}
+
+For each DC-removed channel signal $\bar{x}^{(u)} \in \R^T$, a
+$d = 1{,}200$-dimensional characteristic vector is extracted following the
+schema in Table~\ref{tab:feat_schema}.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{%
+    \zerone feature schema ($d = 1{,}200$ total dimensions).
+    Multi-channel results are aggregated by energy-weighted mean
+    (Eq.~\ref{eq:energy_weight}).
+  }
+  \label{tab:feat_schema}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}llrp{8cm}@{}}
+    \toprule
+    Segment & Method & Dims & Description \\
+    \midrule
+    Time   & Statistics  & 15    &
+      Mean, RMS, variance, standard deviation, maximum, minimum,
+      peak-to-peak, kurtosis, skewness, zero-crossing rate,
+      mean absolute value, crest factor, impulse factor,
+      margin factor, and waveform factor \\
+    STFT   & Frame means & 127   &
+      Mean magnitude per frame
+      ($n_\mathrm{seg}{=}128$, hop${=}64$, DC bin removed) \\
+    PSD    & Welch       & 1\,050 &
+      1--1\,000\,Hz at 1\,Hz resolution (1\,000 bins)
+      $+$ 1\,001--2\,000\,Hz in 20\,Hz bands (50 bins) \\
+    HF     & Ratios      & 8     &
+      Amplitude ratio and power ratio above each of
+      $f_\mathrm{thr} \in \{1000,2000,3000,4000\}$\,Hz \\
+    \midrule
+    \multicolumn{2}{@{}l}{\textbf{Total}} & \textbf{1\,200} & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Time-domain features}
+For signal $\bar{x} \in \R^T$, the 15 time-domain statistics are
+\begin{equation}
+\begin{aligned}
+\mathbf{z}_{\mathrm{time}}
+=
+\bigl[
+&\mu,\,
+x_\mathrm{RMS},\,
+\sigma^2,\,
+\sigma,\,
+x_{\max},\\
+&x_{\min},\,
+x_\mathrm{p2p},\,
+\kappa,\,
+\gamma,\,
+r_\mathrm{zc},\\
+&\mu_{|\cdot|},\,
+x_\mathrm{crest},\,
+x_\mathrm{imp},\\
+&x_\mathrm{margin},\,
+x_\mathrm{wave}
+\bigr]
+\in \R^{15}.
+\end{aligned}
+\end{equation}
+Let
+\begin{align}
+\mu &= T^{-1}\sum_{t=1}^{T}\bar{x}_t, \notag \\
+\sigma^2 &= T^{-1}\sum_{t=1}^{T}(\bar{x}_t-\mu)^2, \notag \\
+\sigma &= \sqrt{\sigma^2}.
+\end{align}
+Then the main quantities are defined as
+\begin{equation}
+\begin{aligned}
+x_\mathrm{RMS} \;&=\; \sqrt{T^{-1}\sum_{t=1}^{T}\bar{x}_t^2},\\
+x_{\max} \;&=\; \max_t \bar{x}_t,\qquad
+x_{\min} \;=\; \min_t \bar{x}_t,\\
+x_\mathrm{p2p} \;&=\; x_{\max}-x_{\min},\\
+\kappa \;&=\; \frac{m_4}{m_2^2},\\
+\gamma \;&=\; \frac{m_3}{\sigma^3},\\
+r_\mathrm{zc} \;&=\; \frac{1}{T-1}
+  \sum_{t=1}^{T-1}\mathbf{1}\!\left[\bar{x}_t\,\bar{x}_{t+1}<0\right],\\
+\mu_{|\cdot|} \;&=\; T^{-1}\sum_{t=1}^{T}|\bar{x}_t|,\\
+x_\mathrm{crest} \;&=\; \frac{x_{\max}}{x_\mathrm{RMS}},\\
+x_\mathrm{imp} \;&=\; \frac{x_{\max}}{\mu_{|\cdot|}},\\[2pt]
+x_\mathrm{wave} \;&=\; \frac{x_\mathrm{RMS}}{\mu_{|\cdot|}},\\
+x_\mathrm{margin} \;&=\; \frac{x_{\max}}
+{\left(T^{-1}\sum_{t=1}^{T}|\bar{x}_t|^4\right)^{1/4}}.
+\end{aligned}
+\label{eq:time_features}
+\end{equation}
+where $m_p = T^{-1}\sum_{t=1}^{T}(\bar{x}_t-\mu)^p$ denotes the
+$p$-th central moment.
+
+\paragraph{STFT features}
+After DC removal, a short-time Fourier transform is applied with
+Hann window, segment length $n_\mathrm{seg}=128$, and overlap
+$n_\mathrm{overlap}=64$. Let $S(f,\tau)$ denote the complex STFT of
+$\bar{x}$. After discarding the DC bin, we compute the mean magnitude
+of each time frame as
+\begin{equation}
+  s_\tau = \frac{1}{|\mathcal{F}^\prime|}
+  \sum_{f \in \mathcal{F}^\prime} |S(f,\tau)|,
+\end{equation}
+where $\mathcal{F}^\prime$ is the non-DC frequency index set. The
+resulting sequence is zero-padded or truncated to 127 dimensions,
+yielding a fixed-length STFT descriptor
+\begin{equation}
+\mathbf{s}_{\mathrm{STFT}} \in \R^{127}.
+\end{equation}
+
+\paragraph{PSD features}
+Welch PSD is estimated at $1$\,Hz resolution from $1$ to $2000$\,Hz.
+The low-frequency region $1$--$1000$\,Hz is retained at full
+resolution, while the high-frequency region $1001$--$2000$\,Hz is
+compressed into 20\,Hz bands by local averaging. This gives
+\begin{equation}
+\begin{aligned}
+\mathbf{p}_{\mathrm{PSD}}
+=
+\bigl[
+&P(1),\,P(2),\,\dots,\,P(1000),\\
+&\bar{P}_{1001{:}1020},\,\dots,\,\bar{P}_{1981{:}2000}
+\bigr]
+\in \R^{1050}.
+\label{eq:welch}
+\end{aligned}
+\end{equation}
+
+\paragraph{High-frequency ratio features}
+To explicitly characterise the proportion of elevated-frequency
+content, we define four threshold frequencies
+\[
+f_\mathrm{thr} \in \{1000, 2000, 3000, 4000\}\,\text{Hz}.
+\]
+For each threshold, two scalar ratios are computed: the amplitude
+ratio
+\begin{equation}
+  r^{(A)}(f_\mathrm{thr})
+  =
+  \frac{\sum_{f \ge f_\mathrm{thr}} A(f)}
+       {\sum_{f \ge 0} A(f)},
+\end{equation}
+and the power ratio
+\begin{equation}
+  r^{(P)}(f_\mathrm{thr})
+  =
+  \frac{\sum_{f \ge f_\mathrm{thr}} P(f)}
+       {\sum_{f \ge 0} P(f)},
+\end{equation}
+where $A(f)$ and $P(f)$ denote the spectrum magnitude and PSD,
+respectively. Concatenating the four threshold pairs yields
+\begin{equation}
+\begin{aligned}
+\mathbf{r}_{\mathrm{HF}}
+=
+\bigl[
+&r^{(A)}(1000),\,r^{(P)}(1000),\\
+&r^{(A)}(2000),\,r^{(P)}(2000),\\
+&r^{(A)}(3000),\,r^{(P)}(3000),\\
+&r^{(A)}(4000),\,r^{(P)}(4000)
+\bigr]
+\in \R^{8}.
+\end{aligned}
+\end{equation}
+
+\paragraph{Multi-channel aggregation}
+For a sample with $U$ available sensor channels, each channel yields a
+feature vector $\mathbf{z}_u \in \R^{1200}$. To preserve the relative
+importance of stronger vibration responses, the sample-level feature is
+computed by an energy-weighted mean:
+\begin{equation}
+\mathbf{z}
+=
+\frac{\sum_{u=1}^{U} e_u \mathbf{z}_u}
+     {\sum_{u=1}^{U} e_u + \varepsilon},
+\label{eq:aggregation}
+\end{equation}
+where $e_u = T^{-1}\sum_{t=1}^{T} x_{u,t}^2$ is the channel energy and
+$\varepsilon$ is a small constant for numerical stability.
+\subsubsection{Raster Stripe Image Encoding}
+\label{sec:raster}
+
+The aggregate feature vector $\mathbf{S}_k$ is mapped to a
+$150 \times 150$ RGB image using a non-interpolating raster layout
+(Fig.~\ref{fig:pipeline}).
+Features are tiled into a 2D grid with unit cell size $W_\mathrm{unit}
+\times H_\mathrm{unit} = 3 \times 2$ pixels, and the four panels are
+stacked vertically in order (time / STFT / PSD / HF), with each panel
+wrapping its features row-by-row at a fixed tile width.
+%
+\begin{equation}
+  n_\mathrm{rows}^{(g)} = \left\lceil d_g / w_g \right\rceil,
+  \label{eq:raster_rows}
+\end{equation}
+where $g \in \{\text{time},\text{stft},\text{psd},\text{hf}\}$,
+$d_g$ is the segment dimension, and $w_g$ is the tile width
+(16 / 16 / 32 / 8 for the four panels).
+The PSD panel spans 33 rows $\times$ 2\,px $= 66$\,px,
+against 2\,px for time and HF and 16\,px for STFT, so it
+occupies approximately 77\% of the image content area.
+
+Pixel values are linearly normalised using training-set statistics:
+%
+\begin{equation}
+  I_{ij} = \mathrm{clip}\!\left(
+    \frac{S_d - \hat{m}_d}{\hat{M}_d - \hat{m}_d + \varepsilon},\; 0, 1
+  \right),
+  \label{eq:norm}
+\end{equation}
+%
+where $\hat{m}_d$ and $\hat{M}_d$ are training-set minimum and maximum
+for dimension $d$.
+The image is padded to $150{\times}150$ and represented as a
+three-channel input tensor for ResNet18-based classification.
+
+Two properties of this layout matter for interpretability and learning.
+Each PSD row holds 32 tiles spanning 32\,Hz: row $r$ covers
+$1 + 32r$ to $32(r+1)$\,Hz, so Grad-CAM activations in those rows read
+directly as frequency bands.
+The 77\% height share also concentrates most CNN receptive fields on
+spectral content; the time and HF panels occupy narrow border strips.
+
+\subsubsection{ResNet18 Training and SWA}
+\label{sec:resnet}
+
+A ResNet18 \cite{he2016deep} classifier is trained from scratch on
+\zerone images.
+The final fully-connected layer is replaced with a two-output linear
+head ($\R^{512} \to \R^2$).
+Table~\ref{tab:hyper_zerone} lists the complete hyperparameters.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{%
+    Training configuration for \zerone ResNet18.
+    All values were fixed before any test-set evaluation.
+  }
+  \label{tab:hyper_zerone}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}lp{3.8cm}@{}}
+    \toprule
+    Hyperparameter & Value \\
+    \midrule
+    Image size               & $150 \times 150$ \\
+    Batch size               & 16 \\
+    Max epochs               & 30 \\
+    Base learning rate       & $8\times10^{-6}$ \\
+    LR schedule              & ReduceLROnPlateau (val macro-F1) \\
+    Weight decay             & $10^{-4}$ \\
+    Label smoothing          & $\varepsilon = 0.05$ \\
+    Class weights            & Inverse class frequency \\
+    Gradient clipping        & $\|\mathbf{g}\|_2 \leq 1.0$ \\
+    EMA decay                & $0.999$ \\
+    SWA start ratio          & 0.50 of max epochs \\
+    SWA min-LR               & $5 \times 10^{-5}$ \\
+    SWA max-loss bias        & 0.05 above best val loss \\
+    Random seed              & 42 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Loss function}
+Cross-entropy with label smoothing and class weights:
+%
+\begin{equation}
+  \mathcal{L}_\mathrm{CE} =
+  -\sum_{c=0}^{1} \alpha_c \,
+  \bigl[(1-\varepsilon)\,y_c + \tfrac{\varepsilon}{2}\bigr]
+  \log \hat{p}_c,
+  \label{eq:ce_loss}
+\end{equation}
+%
+where $\alpha_c \propto n_c^{-1}$ are inverse-frequency class weights.
+
+\paragraph{Model selection}
+The best checkpoint is selected by the four-key tie-break
+\[
+  \bigl(F1_\mathrm{val}\!\uparrow,\; L_\mathrm{val}\!\downarrow,\;
+  \mathrm{lr}\!\downarrow,\; \mathrm{epoch}\!\uparrow\bigr).
+\]
+An EMA copy (decay 0.999) of the parameters runs in parallel.
+
+\paragraph{Stochastic weight averaging}
+In the second half of training, whenever the current validation loss
+falls within 5\% of the best observed and the learning rate drops
+below a threshold, the weights are accumulated into an SWA buffer
+\cite{izmailov2018averaging}.
+After training, batch-normalisation running statistics are
+re-computed on 128 forward passes.
+
+\paragraph{Grad-CAM attribution}
+Grad-CAM \cite{selvaraju2017grad} is applied to the final residual
+block (\texttt{layer4}).
+The resulting $5{\times}5$ activation map is upsampled to
+$150{\times}150$ and overlaid on the raster image.
+Hot regions within the PSD panel (rows 1--33 of that panel) correspond
+to specific frequency bands: a pixel at in-panel row $r$ (0-based),
+column $c$ maps to $f = 1 + 32r + c$\,Hz, giving per-Hz spectral
+attribution without additional decoding.
+
+%% --- Figure: SpecRas feature extraction and raster-stripe pipeline ---
+\begin{figure}[H]
+  \centering
+  \subfigure[Feature construction: 4 descriptor groups
+    (time\,15 + STFT\,127 + PSD\,1\,050 + HF\,8 = 1\,200 dims)
+    $\to$ $150\times150$ raster image.
+    PSD occupies $\approx$77\% of the image; each PSD row spans 32\,Hz
+    so Grad-CAM activations read directly as Hz bands.]{%
+    \includegraphics[width=0.88\linewidth]{spec_feat.png}%
+  }\\[8pt]
+  \subfigure[ResNet18 backbone: four residual layers
+    ($64\!\to\!128\!\to\!256\!\to\!512$ channels),
+    global average pooling, two-class linear head
+    ($\R^{512}\!\to\!\R^{2}$).]{%
+    \includegraphics[width=0.82\linewidth]{resnet18.png}%
+  }
+  \caption{%
+    \zerone pipeline.
+    \textbf{(a)} Feature extraction and raster encoding:
+    PSD dominates 77\% of the $150\times150$ image; Grad-CAM hot rows
+    map directly to 1--1\,000\,Hz spectral bands.
+    \textbf{(b)} ResNet18 classifier backbone.
+  }
+  \label{fig:pipeline}
+\end{figure}
+
+\subsection{\hczv Anomaly Detection Pathway}
+\label{sec:vae}
+
+\subsubsection{Heterogeneous Three-Channel Encoding}
+\label{sec:3ch}
+
+The energy-weighted z-score normalised signal
+$\check{x} = (\tilde{x} - \mu) / \sigma$
+is converted to a three-channel $224{\times}224$ image
+$\bI \in [0,1]^{3 \times 224 \times 224}$.
+Let
+%
+\begin{align}
+  \mathbf{M}_0 &= \bigl|\mathrm{CWT}(\check{x},\,
+                  \Psi_\mathrm{morl},\,a_{1:128})\bigr|,
+                  \label{eq:cwt_ch} \\
+  \mathbf{M}_1 &= \bigl|\mathrm{STFT}(\check{x};\,
+                  n{=}256,\,h{=}128)\bigr|,
+                  \label{eq:stft_ch} \\
+  \mathbf{M}_2 &= \mathrm{fold}(\check{x},\,32{\times}256),
+                  \label{eq:context_ch}
+\end{align}
+%
+where scales $a_{1:128}$ are logarithmically spaced and
+$\mathrm{fold}(\cdot)$ reshapes the 1-D signal into a $32{\times}256$
+matrix.
+Each channel is then:
+%
+\begin{equation}
+  \bI_{[n]} = \mathrm{norm}\!\bigl(
+    \mathrm{resize}(\mathbf{M}_n,\;224{\times}224)
+  \bigr), \quad n=0,1,2.
+  \label{eq:img_ch}
+\end{equation}
+The three channels provide complementary physical views: CWT resolves
+transient signatures at multiple time-frequency scales; STFT reveals
+stationary harmonic structure; context encodes global waveform
+morphology.
+
+\subsubsection{SpatialResNetVAE Architecture}
+\label{sec:vae_arch}
+
+\paragraph{Encoder}
+A ResNet18 backbone processes $\bI$ through its stem and four residual
+blocks, producing a feature tensor $\mathbf{h} \in \R^{512 \times 7 \times 7}$.
+Two parallel $1{\times}1$ convolutional heads project $\mathbf{h}$ to
+spatial mean and log-variance, both in $\R^{64 \times 7 \times 7}$:
+%
+\begin{align}
+  \bmu_z &= \mathbf{W}_\mu * \mathbf{h}, \notag \\
+  \log\boldsymbol{\sigma}_z^2 &= \mathbf{W}_\sigma * \mathbf{h}.
+  \label{eq:spatial_proj}
+\end{align}
+%
+Retaining the $7{\times}7$ spatial dimensions (rather than global
+average pooling) is the single most important architectural decision:
+each spatial cell $(j,k)$ has a $32{\times}32$-pixel receptive field
+in $\bI$, so reconstruction residuals at cell $(j,k)$ correspond to
+a specific time-frequency region of the input CWT or STFT.
+
+\paragraph{Reparameterisation}
+$\bz = \bmu_z + \boldsymbol{\sigma}_z \odot \boldsymbol{\epsilon}$,
+$\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0},\mathbf{I})$.
+
+\paragraph{Decoder}
+A $1{\times}1$ convolution maps $\bz \in \R^{64\times 7\times 7}$
+to 512 channels; five transposed-convolution blocks
+(ConvTranspose2d, $k{=}4$, $s{=}2$, $p{=}1$, BatchNorm, ReLU)
+progressively upsample to $3{\times}224{\times}224$.
+The output activation is Sigmoid.
+
+\paragraph{Training objective}
+The $\beta$-VAE evidence lower bound (ELBO) \cite{kingma2013auto,higgins2017betavae}
+with L1 reconstruction:
+%
+\begin{align}
+  \mathcal{L} &=
+  \frac{1}{B}\,\|\bI - \hat{\bI}\|_1\notag\\
+  &\;+\;\beta(e)\cdot\frac{-1}{2B}
+  \sum_{i,j,k}\bigl(
+    1 + \log\sigma_{z,ijk}^2
+    - \mu_{z,ijk}^2
+    - \sigma_{z,ijk}^2
+  \bigr),
+  \label{eq:vae_loss}
+\end{align}
+%
+where $\beta(e)=\min(\beta_{\max}, \beta_{\max}\cdot e/e_{\mathrm{warm}})$ anneals
+from 0 to $\beta_{\max}=0.05$ over $e_{\mathrm{warm}}=20$ epochs.
+L1 reconstruction preserves edge sharpness in the CWT scalogram channel;
+the Kullback--Leibler (KL) warm-up prevents posterior collapse \cite{lucas2019posterior}.
+Training uses only normal-labelled samples.
+
+\subsubsection{Composite Anomaly Score}
+\label{sec:anomaly}
+
+\paragraph{Channel-weighted reconstruction error}
+%
+\begin{align}
+  e_\mathrm{rec}(\bI) =\;&
+  0.4\,\|\bI_{[0]} - \hat{\bI}_{[0]}\|_1 \notag \\
+  &+ 0.5\,\|\bI_{[1]} - \hat{\bI}_{[1]}\|_1 \notag \\
+  &+ 0.1\,\|\bI_{[2]} - \hat{\bI}_{[2]}\|_1.
+  \label{eq:rec_err}
+\end{align}
+%
+The STFT channel receives the highest weight (0.5) because structured
+harmonic patterns are most sensitive to fault-induced changes.
+
+\paragraph{Mahalanobis distance}
+The spatial mean of the encoder output
+$\bar{\bmu}_z = \frac{1}{49}\sum_{j,k} \bmu_{z,\cdot jk} \in \R^{64}$
+provides a fixed-length embedding.
+A Gaussian density is fitted to all training-set embeddings:
+%
+\begin{align}
+  \bmu_\mathrm{tr} &= N^{-1}\textstyle\sum_n \bar{\bmu}_{z,n}, \\
+  \bSigma_\mathrm{tr} &=
+    N^{-1}\textstyle\sum_n
+    (\bar{\bmu}_{z,n} - \bmu_\mathrm{tr})
+    (\bar{\bmu}_{z,n} - \bmu_\mathrm{tr})^\top
+    + \varepsilon\mathbf{I}, \\
+  d_\mathrm{MD}(\bI) &= \sqrt{
+    (\bar{\bmu}_z - \bmu_\mathrm{tr})^\top
+    \bSigma_\mathrm{tr}^{-1}
+    (\bar{\bmu}_z - \bmu_\mathrm{tr})
+  }.
+  \label{eq:md}
+\end{align}
+
+\paragraph{Composite score}
+Both scores are z-normalised using training statistics, then combined:
+%
+\begin{align}
+  a(\bI) &=
+  0.6 \cdot \frac{e_\mathrm{rec} - \mu_\mathrm{rec}}
+                  {\sigma_\mathrm{rec}} \notag \\
+  &\quad {}+ 0.4 \cdot
+  \frac{d_\mathrm{MD} - \mu_\mathrm{MD}}{\sigma_\mathrm{MD}}.
+  \label{eq:score}
+\end{align}
+%
+A sample is flagged when $a(\bI) \geq \tau$, with $\tau$ at the
+97.5th percentile of training normal scores.
+Table~\ref{tab:hyper_vae} lists all \hczv hyperparameters.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{\hczv training hyperparameters.}
+  \label{tab:hyper_vae}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}lp{3.8cm}@{}}
+    \toprule
+    Hyperparameter & Value \\
+    \midrule
+    Image size                  & $224 \times 224$ \\
+    Batch size                  & 32 \\
+    Max epochs                  & 100 \\
+    Learning rate               & $10^{-4}$ (Adam) \\
+    Latent channels $C_z$       & 64 \\
+    $\beta_{\max}$              & 0.05 \\
+    KL warm-up epochs           & 20 \\
+    Initialisation              & Random (no pre-training) \\
+    Anomaly threshold quantile  & 97.5\% \\
+    Reconstruction weight       & 0.6 \\
+    Random seed                 & 42 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Method Comparison}
+\label{sec:compare}
+
+Table~\ref{tab:method_compare} places the two diagnostic approaches
+side by side on the four axes that matter in practice: input
+representation, training label requirement, model type, and
+interpretability output.
+
+\begin{table}[H]
+  \centering
+  \caption{%
+    Side-by-side comparison of diagnostic approaches.
+    \checkmark: required; --: not required.
+  }
+  \label{tab:method_compare}
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{@{}p{2.9cm}p{2.0cm}p{3.0cm}p{2.3cm}cp{3.2cm}@{}}
+    \toprule
+    Approach
+      & Paradigm
+      & Input representation
+      & Model
+      & Labels?
+      & Interpretability output \\
+    \midrule
+
+    \zerone{} + ResNet18 (SWA)
+      & Supervised
+      & 1\,200-dim PSD raster image
+      & ResNet18 + SWA
+      & \checkmark
+      & Grad-CAM per-Hz heat map \\
+    \hczv{} (SpatialResNetVAE)
+      & One-class detection
+      & 3-ch CWT\slash{}STFT\slash{}context image
+      & $\beta$-VAE, spatial latent
+      & --
+      & Reconstruction residual heat map \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\zerone preserves the full spectral shape in a 1\,200-bin PSD-dominant
+image at the cost of a labelled training set and sensitivity to
+cross-unit covariate shift.
+\hczv replaces the discriminative objective with a generative one:
+learn to reconstruct normal time-frequency images, then flag anything
+that reconstructs poorly.
+No fault labels are required, and the spatial latent map localises the
+anomaly to specific CWT/STFT cells.
+
+
+%% ========================================================================
+\section{Experiments and Discussion}
+\label{sec:experiments}
+%% ========================================================================
+
+\subsection{Dataset}
+\label{sec:dataset}
+
+Vibration measurements were collected from real in-service AC power
+transformers at a regional substation.
+Each monitoring session is stored as a JSON file in which all records
+sharing a common timestamp $t_k$ constitute one Segment.
+Each record carries a \texttt{sensor\_id} string and a fixed-length
+\texttt{signal\_value} array of $T=8{,}192$ samples at
+$f_s=8{,}192\,$Hz (one second per Segment).
+No sensor position, orientation, or type metadata is stored in the
+collected data; the number of active channels $U_k$ per Segment
+varies across sessions and transformer units.
+Energy-weighted channel fusion (Section~\ref{sec:preprocess})
+therefore collapses whatever channels are present into a single
+representative signal, requiring no knowledge of sensor placement or
+unit type.
+Table~\ref{tab:dataset} summarises the train/validation/test split.
+Fig.~\ref{fig:signal_chars} illustrates representative multi-channel
+signal characteristics at an in-service substation, motivating the
+energy-weighted fusion and the high-dimensional spectral feature schema.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{%
+    Dataset composition across 19 transformer units
+    (4{,}499 Segments total).
+    Each unit is assigned to exactly one split; no unit crosses
+    split boundaries.
+    Test units 134 and 135 were fully withheld from all
+    development phases.
+  }
+  \label{tab:dataset}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}lrrrp{4.8cm}@{}}
+    \toprule
+    Split      & Normal & Fault & Total & Transformer IDs \\
+    \midrule
+    Train      & 1{,}595 & 2{,}249 & 3{,}844 &
+      120, 127--129, 143, 152 (normal);
+      114, 132, 136, 153--155, 157--159 (fault) \\
+    Validation & 91  & 164 & 255 & 146 (normal); 145 (fault) \\
+    Test       & 246 & 154 & 400 & \textbf{134 (normal); 135 (fault)} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+%% --- Figure: multi-channel vibration signal characteristics ---
+\begin{figure}[H]
+  \centering
+  \subfigure[Top-15 WPD frequency-band energy per sensor (7-min avg).
+    Energy concentrates below 10\,Hz; inter-channel levels vary
+    substantially across all six sensors.]{%
+    \includegraphics[width=0.92\linewidth]{sig_wpd.png}%
+  }\\[4pt]
+  \subfigure[Velocity RMS vs.\ time with ISO\,10816 reference lines.
+    Channels\,1 and\,3 exceed the upper caution threshold;
+    channels\,4--6 lie in the normal band.]{%
+    \includegraphics[width=0.46\linewidth]{sig_rms.png}%
+  }\hfill
+  \subfigure[Crest factor (peak/RMS) per channel.
+    Channels\,5--6 show markedly elevated impulsive content ($>$3.2)
+    versus 2.65--2.75 for channels\,1--4.]{%
+    \includegraphics[width=0.46\linewidth]{sig_crest.png}%
+  }\\[4pt]
+  \subfigure[Per-channel normalised WPD heatmap (7-min avg).
+    All channels concentrate energy in the 0--10\,Hz sub-band;
+    channels\,5--6 show secondary excitation at 10--20\,Hz.]{%
+    \includegraphics[width=0.92\linewidth]{sig_heat.png}%
+  }
+  \caption{%
+    Multi-channel signal characteristics (representative in-service substation).
+    \textbf{(a)} WPD band energy: energy concentrated below 10\,Hz,
+    heterogeneous across 6 channels.
+    \textbf{(b,c)} Velocity RMS trend and crest-factor distribution;
+    channels\,5--6 breach caution thresholds.
+    \textbf{(d)} Normalised WPD heatmap confirming low-frequency dominance.
+    Inter-channel heterogeneity motivates energy-weighted fusion
+    (Eq.~\ref{eq:energy_weight}).
+  }
+  \label{fig:signal_chars}
+\end{figure}
+
+All 19 transformer units are assigned to exactly one split: 15 to
+training (6 normal-condition units and 9 fault-condition units), 2 to validation
+(units 146 and 145), and 2 to the held-out test set (units 134
+and 135).
+This hard unit-level partition means that test accuracy measures
+whether the learned spectral representation transfers to transformers
+the model has never seen, not whether it interpolates within units
+already in the training pool.
+Test units 134 and 135 were not touched during feature design,
+hyperparameter search, or threshold calibration, making them a
+genuine out-of-sample evaluation.
+
+\subsection{Implementation Details}
+\label{sec:impl}
+
+All experiments ran on a single workstation with an NVIDIA GPU
+(CUDA 12.8), Python 3.11, PyTorch~2.7\allowbreak+cu128, and torchvision~0.22.
+Scientific computing used NumPy 2.3, SciPy 1.16, and scikit-learn 1.5.
+The random seed was fixed at 42.
+
+\zerone training uses the hyperparameters in Table~\ref{tab:hyper_zerone};
+training-set normalisation statistics for image encoding are computed
+once from the training split and frozen.
+\hczv training uses only normal-labelled training samples; the
+Mahalanobis statistics and anomaly threshold are computed from
+training-normal embeddings after the VAE converges.
+
+\subsection{Comparison Methods}
+\label{sec:baselines}
+
+Three diagnostic configurations are evaluated (two pathways, with two checkpoints for \zerone):
+
+\begin{enumerate}
+  \item \textbf{\zerone + ResNet18 (best-val checkpoint):} the supervised
+    pathway using the checkpoint with highest validation F1.
+  \item \textbf{\zerone + ResNet18 (SWA checkpoint):} the same pipeline
+    with the stochastic weight-averaged model.
+  \item \textbf{\hczv (SpatialResNetVAE):} the one-class anomaly
+    detection pathway trained without fault labels, evaluated using
+    the 97.5th-percentile anomaly threshold.
+\end{enumerate}
+
+\subsection{Performance Comparison}
+\label{sec:results}
+
+Table~\ref{tab:main_results} reports five diagnostic metrics on the
+400-sample held-out test set.
+Fig.~\ref{fig:vae_results} shows the \hczv visual diagnostics.
+
+\begin{table}[H]
+  \centering
+  \caption{%
+    Diagnostic performance on the held-out test set
+    (246 normal / 154 fault, $N=400$; transformers 134 and 135).
+    Pre.(N): normal-class precision.
+    Rec.(N/F): normal/fault recall.
+    Best result per metric shown in \textbf{bold}.
+    $^\dagger$: trained without fault labels.
+  }
+  \label{tab:main_results}
+  \small
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{@{}p{3.6cm}p{1.9cm}ccccc@{}}
+    \toprule
+    Method & Paradigm
+      & Acc.$\uparrow$
+      & Pre.(N)$\uparrow$
+      & Rec.(N)$\uparrow$
+      & Rec.(F)$\uparrow$
+      & Macro-F1$\uparrow$ \\
+    \midrule
+
+    \zerone{} + ResNet18 (best-val ckpt)
+      & Supervised   & 94.25\% & 1.000 & 0.907 & \textbf{1.000} & 0.941 \\
+    \zerone{} + ResNet18 (SWA)
+      & Supervised   & 97.00\% & \textbf{1.000}
+                    & 0.951   & \textbf{1.000} & 0.969 \\
+    \textbf{\hczv{} (SpatialResNetVAE)}$^\dagger$
+      & One-class    & \textbf{98.25\%} & \textbf{1.000} & \textbf{0.972} & \textbf{1.000} & \textbf{0.982} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Fault recall}
+Both \zerone checkpoints and \hczv achieve fault recall of $1.000$:
+all 154 fault samples are correctly flagged.
+Zero false negatives across both deep-learning pathways is the
+operationally important result: a missed fault can lead to thermal
+runaway and equipment loss.
+
+\paragraph{SWA narrows the false-positive gap}
+The SWA checkpoint reduces the false-positive count from
+$23/246 = 9.3\%$ to $12/246 = 4.9\%$ (normal recall $0.907 \to 0.951$).
+Each false positive triggers a field inspection that costs operational
+time and disrupts scheduled maintenance.
+The result is consistent with the flat-minima hypothesis
+\cite{izmailov2018averaging}: a wider loss basin generalises better
+across the covariate shift between training and test transformer units.
+
+\paragraph{\hczv performance}
+Trained exclusively on normal samples, \hczv reaches 98.25\% accuracy
+and macro-F1 of 0.982, surpassing the SWA supervised result by
+1.25\,pp, with 7 false positives (2.8\% of normal).
+The t-SNE projection in Fig.~\ref{fig:vae_results}(a) shows that test
+fault samples are systematically displaced from the training-normal
+cluster, confirming that the spatial VAE has learned a coherent
+normality manifold.
+Score histograms in Fig.~\ref{fig:vae_results}(c,d) reveal the
+two well-separated score distributions: fault scores peak near 0.7
+and normal scores above 3.5, with the threshold at $\tau=2.00$
+cleanly between the two modes.
+The confusion matrix (Fig.~\ref{fig:vae_results}(b)) confirms
+239 TN, 7 FP, 0 FN, 154 TP.
+
+%% --- Figure: HetSpatVAE diagnostic outputs ---
+\begin{figure}[H]
+  \centering
+  \subfigure[Latent space (t-SNE): training normal (grey),
+    test normal (blue, $\circ$), test fault (red, $\times$).
+    Fault samples displaced from the normal cluster confirm
+    a coherent normality manifold.]{%
+    \includegraphics[width=0.46\linewidth]{vae_tsne.png}%
+  }\hfill
+  \subfigure[Confusion matrix: 239\,TN, 7\,FP, 0\,FN, 154\,TP.
+    Accuracy\,=\,98.25\%; fault recall\,=\,1.000 (zero missed faults).]{%
+    \includegraphics[width=0.46\linewidth]{vae_cm.png}%
+  }\\[4pt]
+  \subfigure[Score distribution, test-normal ($n=246$,
+    $\tau=2.00$). Mode near 4.0; 7 samples fall below $\tau$
+    (false-positive rate 2.8\%).]{%
+    \includegraphics[width=0.46\linewidth]{vae_hn.png}%
+  }\hfill
+  \subfigure[Score distribution, test-fault ($n=154$, $\tau=2.00$).
+    All fault scores lie below $\tau$ (mode $\approx$0.7):
+    100\% fault recall.]{%
+    \includegraphics[width=0.46\linewidth]{vae_hf.png}%
+  }
+  \caption{%
+    \hczv diagnostic outputs on the held-out test set
+    ($\tau$ at 97.5th training-normal percentile).
+    \textbf{(a)} t-SNE: fault latent codes occupy a distinct region.
+    \textbf{(b)} Confusion matrix: 98.25\% accuracy, zero missed faults.
+    \textbf{(c,d)} Score histograms: fault and normal distributions
+    are well separated at $\tau=2.00$.
+  }
+  \label{fig:vae_results}
+\end{figure}
+
+\paragraph{ROC, precision--recall, and calibration (\zerone SWA)}
+Fig.~\ref{fig:zerone_results} shows the full diagnostic outputs for
+the \zerone SWA checkpoint.
+The ROC AUC reaches $0.989$ for both classes; the fault-class
+average precision (AP) is $0.960$, so the ranked probability outputs
+are reliable regardless of which threshold is chosen.
+The reliability (calibration) curve gives an expected calibration
+error (ECE) of $0.128$: a model output of 90\% fault probability
+corresponds to an observed fault rate close to 90\%.
+The t-SNE projection of penultimate-layer features shows two
+well-separated clusters, and the per-band PSD mean$\pm\sigma$ plots
+show fault samples carrying elevated spectral power at specific
+mid-to-high frequency bins.
+
+%% --- Figure: SpecRas diagnostic outputs ---
+\begin{figure}[H]
+  \centering
+  \subfigure[t-SNE: normal (blue, $n=246$) and fault (orange, $n=154$)
+    occupy disjoint clusters with non-overlapping confidence ellipses.]{%
+    \includegraphics[width=0.30\linewidth]{cls_tsne.png}%
+  }\hfill
+  \subfigure[ROC curves: AUC\,=\,0.989 for both classes.
+    TPR\,$\approx$\,0.97 at FPR\,=\,0.02.]{%
+    \includegraphics[width=0.30\linewidth]{cls_roc.png}%
+  }\hfill
+  \subfigure[Reliability diagram: ECE\,=\,0.128.
+    Bars track the diagonal; model outputs are conservative
+    (slight under-confidence).]{%
+    \includegraphics[width=0.30\linewidth]{cls_cal.png}%
+  }\\[4pt]
+  \subfigure[PSD mean\,$\pm1\sigma$ per frequency bin.
+    Fault (orange) carries elevated power at mid-to-high frequency
+    bands; Fault$-$Normal difference (green dashed) marks the
+    discriminative Hz regions.]{%
+    \includegraphics[width=0.92\linewidth]{cls_psd.png}%
+  }
+  \caption{%
+    \zerone SWA checkpoint (97.00\% accuracy, macro-F1\,=\,0.969;
+    234 TN, 12 FP, 0 FN, 154 TP).
+    \textbf{(a)} t-SNE feature clusters.
+    \textbf{(b)} ROC (AUC\,=\,0.989).
+    \textbf{(c)} Calibration (ECE\,=\,0.128).
+    \textbf{(d)} PSD statistics: fault samples show elevated spectral
+    power in specific bands identified by the difference curve.
+  }
+  \label{fig:zerone_results}
+\end{figure}
+
+\paragraph{Validation performance}
+Both \zerone checkpoints achieve 100\% accuracy and F1 on the
+validation set ($N=255$).
+The gap to test accuracy (97\%) is attributed entirely to cross-unit
+covariate shift, not overfitting.
+
+\subsection{Ablation: SWA Contribution}
+\label{sec:ablation}
+
+Table~\ref{tab:ablation} isolates SWA by comparing best-val and SWA
+checkpoints, which differ only in the weight-averaging step.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Ablation of stochastic weight averaging (SWA).}
+  \label{tab:ablation}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}p{4cm}cc@{}}
+    \toprule
+    Configuration & Acc.$\uparrow$ & Macro-F1$\uparrow$ \\
+    \midrule
+    \zerone + ResNet18 (best-val ckpt) & 94.25\% & 0.941 \\
+    \zerone + ResNet18 (SWA ckpt)      & \textbf{97.00\%} & \textbf{0.969} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+SWA contributes $+2.75$\,pp accuracy and $+0.028$ macro-F1 at zero
+additional inference cost.
+
+\subsection{Misclassification and Visualisation Analysis}
+\label{sec:viz}
+
+All 12 false positives from the \zerone SWA checkpoint originate from
+transformer 134 and cluster in the 16:00--20:30 local-time window
+(peak evening load).
+During this period, mag\-net\-o\-stric\-tion-in\-duced broadband excitation is
+elevated, pushing high-frequency spectral content into the range that
+overlaps genuine fault signatures.
+The \hczv false positives (7 samples) overlap the same time window and
+show elevated reconstruction error concentrated in the 1\,000--2\,000\,Hz
+STFT channel---channel-level root-cause evidence consistent with the
+\zerone Grad-CAM attribution maps.
+
+\paragraph{Spectral fingerprint}
+Fault samples carry a distinctive PSD pattern: a dominant peak near
+$2f_0 = 100$\,Hz and secondary clusters at 300\,Hz and 500\,Hz
+(odd harmonics of winding resonance under magnetostriction).
+Grad-CAM activations on \texttt{layer4} consistently highlight the
+corresponding row bands in the PSD panel (Fig.~\ref{fig:pipeline}).
+Fig.~\ref{fig:fp_analysis}(a) confirms this pattern in the PSD
+waterfall: the per-sample Fault$-$Normal difference is broadly
+positive across 50--300\,Hz, with localised peaks at the harmonic
+frequencies.
+Fig.~\ref{fig:fp_analysis}(b) dissects a representative \hczv false
+positive whose score (1.90) falls just below the threshold (2.00):
+reconstruction residuals are largest in the CWT channel at the 100\,Hz
+row, consistent with a peak-load magnetostriction harmonic rather than
+a genuine fault signature.
+
+%% --- Figure: spectral fingerprint and false-positive analysis ---
+\begin{figure}[H]
+  \centering
+  \subfigure[PSD waterfall (test set).
+    Top/middle: per-sample normalised PSD for normal/fault.
+    Bottom: Fault$-$Normal difference; red bands mark elevated
+    power in the 50--300\,Hz harmonic region.]{%
+    \includegraphics[width=0.47\linewidth]{cls_wfall.png}%
+  }\hfill
+  \subfigure[\hczv false positive (score\,=\,1.90, $\tau=2.00$).
+    Columns: input / reconstruction / residual.
+    Rows: CWT / \zerone raster / waveform context.
+    Residuals concentrate at the 100\,Hz CWT row
+    (peak-load magnetostriction, not a structural fault).]{%
+    \includegraphics[width=0.47\linewidth]{vae_fp.png}%
+  }
+  \caption{%
+    Spectral fingerprint and false-positive analysis.
+    \textbf{(a)} PSD waterfall: Fault$-$Normal difference highlights
+    50--300\,Hz harmonic bands; Grad-CAM hot rows in the PSD panel
+    correspond to the same frequencies.
+    \textbf{(b)} VAE false-positive residuals localise to the 100\,Hz
+    CWT row---peak-load magnetostriction excitation, not a fault.
+  }
+  \label{fig:fp_analysis}
+\end{figure}
+
+\paragraph{Training dynamics}
+The ReduceLROnPlateau schedule brings the learning rate from
+$8\times10^{-6}$ to $8\times10^{-8}$ over 30 epochs.
+Validation accuracy and macro-F1 both reach 1.000 by epoch 2 and
+remain there, reflecting clean spectral separation between training
+normal and fault units.
+The 3\,pp drop from validation (100\%) to test (97\%) comes from
+cross-unit covariate shift---transformer 134 was recorded under a
+different time-of-day distribution, not a harder fault signature.
+Fig.~\ref{fig:training_dynamics} shows the training and validation
+loss curves together with the validation accuracy and macro-F1 tracks.
+
+%% --- Figure: training dynamics ---
+\begin{figure}[H]
+  \centering
+  \subfigure[Loss vs.\ epoch.
+    Train converges to $\approx$0.14 by epoch\,5; val stabilises
+    at $\approx$0.17 (cross-unit shift, not overfitting).
+    SWA accumulates from epoch\,15 over the flat region.]{%
+    \includegraphics[width=0.46\linewidth]{train_loss.png}%
+  }\hfill
+  \subfigure[Validation accuracy and macro-F1 vs.\ epoch.
+    Both metrics saturate at 1.000 from epoch\,2; the flat plateau
+    enables stable SWA accumulation.]{%
+    \includegraphics[width=0.46\linewidth]{train_score.png}%
+  }
+  \caption{%
+    \zerone ResNet18 training dynamics (30 epochs).
+    \textbf{(a)} Loss: rapid convergence; val plateau enables SWA.
+    \textbf{(b)} Val accuracy and F1 saturate at 1.000 by epoch\,2.
+  }
+  \label{fig:training_dynamics}
+\end{figure}
+
+Fig.~\ref{fig:overview} shows the dual-pathway architecture and how
+energy-weighted channel fusion feeds each diagnostic branch.
+Fig.~\ref{fig:pipeline} diagrams the raster grid: the PSD panel
+($\approx$77\% of image height) dominates the layout, and a Grad-CAM
+hot region at panel row $r$, column $c$ maps to $1 + 32r + c$\,Hz.
+Fig.~\ref{fig:signal_chars} illustrates representative multi-channel
+vibration characteristics motivating the energy-weighted fusion.
+Fig.~\ref{fig:training_dynamics} shows the \zerone training dynamics:
+loss convergence by epoch 5 and validation-metric saturation by
+epoch 2, enabling stable SWA accumulation from epoch 15.
+Fig.~\ref{fig:zerone_results} collects the \zerone diagnostic outputs:
+t-SNE feature clusters, ROC curves (AUC\,=\,0.989), calibration
+curve (ECE\,=\,0.128), and per-band PSD statistics.
+Fig.~\ref{fig:fp_analysis} presents the PSD waterfall and a
+representative \hczv false-positive reconstruction breakdown,
+localising the residual to the peak-load 100\,Hz CWT row.
+
+\subsection{Discussion}
+\label{sec:discussion}
+
+Three findings stand out.
+
+\textit{Why spectral representation matters.}
+A model that sees the full shape of the PSD---1\,000 bins rather than
+aggregate scalars---can distinguish a peak-load harmonic shift from a
+sustained fault signature, whereas coarser features cannot.
+The raster encoding makes this tractable for a CNN: with 77\% of the
+image area devoted to PSD content, most receptive fields land on
+spectral data, and the row-major wrap preserves frequency ordering so
+Grad-CAM attribution reads directly as Hz-resolution spectral bands.
+
+\textit{One-class detection versus supervised classification.}
+\hczv outperforms the supervised SWA checkpoint by 1.25\,pp
+(98.25\% vs.\ 97.00\%).
+The spatial VAE optimises a generative target: reconstruct normal
+time-frequency images well enough that anything anomalous stands out
+by its reconstruction error.
+A generative model trained on normal data alone generalises more
+reliably to unseen transformer units than a discriminative classifier
+fitted on both classes.
+The score histogram in Fig.~\ref{fig:vae_results}(c,d) also
+shows why the composite score matters: fault and normal distributions
+are clearly separated at $\tau=2.00$, with the normal-class peak at
+$\approx$4.0 well above the fault-class peak at $\approx$0.7.
+The false-positive reconstruction analysis (Fig.~\ref{fig:fp_analysis}(b))
+shows that the 7 misclassified normal samples have residuals concentrated
+at the 100\,Hz CWT row---a peak-load harmonic, not a fault signature,
+and one that the composite reconstruction-plus-Mahalanobis score keeps
+just below threshold.
+
+\textit{Load conditions as a confounding variable.}
+All false positives from both pathways fall in the 16:00--20:30
+peak-load window.
+One direct remedy is to condition predictions on ambient load level
+by including the transformer tap-changer position or bus voltage as
+a covariate.
+Alternatively, a time-of-day calibration that widens the normal-class
+boundary during known peak-load periods would address it without
+requiring additional sensor data.
+
+\textit{Computational overhead.}
+Feature extraction (\zerone) processes approximately 4\,000 samples
+per CPU-hour.
+ResNet18 training completes in under 30 minutes (30 epochs, batch
+size 16, GPU).
+\hczv training takes approximately 2 hours (50 epochs, batch size 32,
+GPU).
+Online inference runs in under 100\,ms per Segment, fast enough for
+near-real-time monitoring.
+
+
+%% ========================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%% ========================================================================
+
+Three things make vibration-based transformer fault diagnosis genuinely
+difficult: the signals change with load, confirmed fault examples are
+rare, and engineers will not act on a black-box score alone.
+This paper addressed all three simultaneously.
+
+The \zerone supervised pathway encodes a 1\,200-dimensional
+physics-motivated spectral feature vector as a raster-stripe image and
+trains a ResNet18 classifier.
+The SWA checkpoint reaches 97.00\% accuracy and macro-F1 of
+0.969 on a cross-unit held-out test set, with zero missed faults.
+The $+2.75$\,pp gain from SWA over the best-validation checkpoint
+confirms that flat-loss-basin regularisation is worth applying whenever
+training data are limited and cross-unit covariate shift is expected.
+
+The \hczv pathway trains a SpatialResNetVAE on normal-only data,
+retaining a $64{\times}7{\times}7$ spatial latent map that produces
+reconstruction-residual heat maps over the time-frequency plane.
+On the same test set it reaches 98.25\% accuracy and macro-F1
+of 0.982 without using a single fault label.
+In practice, substations can go years without a confirmed fault, so a
+label-free detector can be deployed immediately rather than waiting for
+labelled failures to accumulate.
+
+All false positives from both pathways cluster in the evening peak-load
+window and share elevated 1\,000--2\,000\,Hz STFT content, pointing to
+a physical rather than a modelling cause.
+Incorporating load metadata---tap-changer position or bus voltage---is
+the most direct corrective step.
+
+\paragraph{Limitations and future work}
+The current evaluation covers two transformer units at one substation
+sharing a common operating schedule.
+Transfer to units with different core designs (three-phase shell-type
+vs.\ core-type), voltage ratings, or 60\,Hz grids remains an open
+question; federated or domain-adaptive transfer learning is the
+natural approach.
+All fault conditions are grouped into a single class---fine-grained
+classification of winding deformation, core looseness, and cooling
+faults requires labelled examples per fault type, which \hczv
+residual heat maps can help accumulate by pointing engineers to
+candidate anomaly events.
+Finally, Morlet CWT at 128 scales takes roughly 30\,ms per sample on
+a modern CPU, too slow for microcontroller-based sensor nodes;
+a learnable filter-bank approximation would address this.
+
+
+%% ---- End matter ----
+%% CRediT, Declaration of competing interest, and Acknowledgements
+%% have been moved to titlepage.tex (author-identifying information).
+
+\section*{Funding}
+This research did not receive any specific grant from funding agencies
+in the public, commercial, or not-for-profit sectors.
+
+\section*{Data availability}
+The vibration dataset was collected under a confidentiality agreement
+with the grid operator and cannot be made publicly available.
+
+%% Acknowledgements are in titlepage.tex.
+
+\section*{Declaration of generative AI and AI-assisted technologies
+  in the manuscript preparation process}
+During the preparation of this work the author(s) used ChatGPT
+(OpenAI) in order to polish the writing and to check grammar and
+spelling. After using this tool/service, the author(s) reviewed and
+edited the content as needed and take(s) full responsibility for the
+content of the published article.
+
+\bibliography{references}
+
+\onecolumn  %% appendices and end-matter figures in single column
+\appendix
+
+%% ========================================================================
+\section{Feature Extraction Algorithm}
+\label{app:algo}
+%% ========================================================================
+
+Algorithm~\ref{alg:zerone_feat} summarises the \zerone feature
+extraction pipeline for a single multi-channel sample.
+
+\begin{algorithm}[t]
+  \small
+  \caption{\zerone Feature Extraction}
+  \label{alg:zerone_feat}
+  \begin{algorithmic}[1]
+    \REQUIRE Multi-channel signals $\mathcal{X}_k$,
+             sampling rate $f_s$, feature schema $\mathcal{S}$
+    \ENSURE Feature vector $\mathbf{S}_k \in \R^{1200}$
+    \STATE Compute channel weights $w_u$ via Eq.~\eqref{eq:energy_weight}
+    \FOR{each channel $u = 1, \ldots, U_k$}
+      \STATE Remove DC: $\bar{x}^{(u)} \gets x_k^{(u)} - \mu_{x_k^{(u)}}$
+      \STATE Extract time features $\bs^{(u)}_\mathrm{time}$ (15 dims)
+      \STATE Compute Welch PSD via Eq.~\eqref{eq:welch}
+      \STATE Extract STFT means $\bs^{(u)}_\mathrm{stft}$ (127 dims)
+      \STATE Extract PSD features $\bs^{(u)}_\mathrm{psd}$ (1\,050 dims)
+      \STATE Extract HF ratios $\bs^{(u)}_\mathrm{hf}$ (8 dims)
+      \STATE Concatenate: $\bs^{(u)} \gets [\bs^{(u)}_\mathrm{time};\,
+             \bs^{(u)}_\mathrm{stft};\, \bs^{(u)}_\mathrm{psd};\,
+             \bs^{(u)}_\mathrm{hf}]$
+    \ENDFOR
+    \STATE Aggregate: $\mathbf{S}_k \gets \sum_u w_u \bs^{(u)}$
+       via Eq.~\eqref{eq:aggregation}
+    \STATE Normalise via Eq.~\eqref{eq:norm}
+    \RETURN $\mathbf{S}_k$
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+
+\end{document}

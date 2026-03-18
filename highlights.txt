@@ -1,0 +1,7 @@
+Highlights
+
+• Validated on 19 real in-service transformers with strict cross-unit test split.
+• SpecRas spectral rasterisation with Grad-CAM yields Hz-resolution attribution maps.
+• HetSpatVAE detects anomalies label-free via spatial reconstruction residuals.
+• SWA adds +2.75 pp test accuracy with zero missed faults under covariate shift.
+• Peak-load false positives suggest load metadata as the primary missing covariate.
